@@ -9,8 +9,7 @@ class TokenType(Enum):
     INT = 4
     LPAREN = 5
     RPAREN = 6
-    SEMICOLON = 7
-    PLUS = 8
+    PLUS = 7
 
 
 @dataclass
@@ -30,7 +29,6 @@ constant_tokens: dict[str, TokenType] = {
     '\\': TokenType.LAMBDA,
     '(': TokenType.LPAREN,
     ')': TokenType.RPAREN,
-    ';': TokenType.SEMICOLON,
     '+': TokenType.PLUS,
 }
 
@@ -84,6 +82,15 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
             pos += 1
             continue
 
+        # semicolon?
+        if source[pos] == ';':
+            if len(tokens) > 0:
+                statements.append(tokens)
+                tokens = []
+
+            pos += 1
+            continue
+
         # attempt to parse input from current position into `token`
         token: Token | None = None
 
@@ -128,7 +135,7 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
         # add to list of parsed tokens
         tokens.append(token)
 
-    # it tokens remain, add as new statement
+    # if tokens remain, add as new statement
     if len(tokens) > 0 and (len(statements) == 0 or statements[-1] is not tokens):
         if parens != 0:
             raise SyntaxError(f'Line {line_number}, col {pos}: expected \'(\', got end of input (unbalanced brackets)')
