@@ -13,10 +13,14 @@ def execute(source: str, ctx: EvalContext | None = None, *, parser: ParseContext
         parser.reset(statement)
         expression = parse(parser)
 
-        print(f'*** Statement #{k + 1}')
+        if len(statements) > 1:
+            print(f'*** Statement #{k + 1}')
 
-        if output_raw:
+        if output_raw or ctx.eval_step:
             print(str(expression))
             print('-> ', end='')
 
-        print(str(expression.evaluate(ctx)))
+        print(str(expression := expression.evaluate(ctx)))
+
+        while not expression.is_atomic(ctx):
+            print('-> ' + str(expression := expression.evaluate(ctx)))

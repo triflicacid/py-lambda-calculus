@@ -13,7 +13,7 @@ The following options are available:
 - `--output-raw` - output each statement pre-evaluation.
 - `--no-force-eval` - do not force evaluation (still evaluates where possible).
 - `--no-eval-ops` - skip evaluation of operators.
-- `--eval-step` - evaluate in steps, rather than in one go.
+- `--eval-step` - evaluate in steps, rather than in one go. If present, the raw statement will be output as well.
 
 # Syntax
 

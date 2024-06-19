@@ -30,7 +30,11 @@ class Expression:
         """Substitute an argument with `value`."""
         return self
 
-    def evaluate(self, _ctx: EvalContext) -> Expression:
+    def is_atomic(self, ctx: EvalContext):
+        """Return whether we are atomic (can be evaluated)."""
+        raise NotImplemented
+
+    def evaluate(self, ctx: EvalContext) -> Expression:
         """Evaluate expression to ground as much as possible."""
         raise NotImplemented
 
@@ -58,6 +62,10 @@ class Integer(Expression):
         return str(self.value)
 
     @override
+    def is_atomic(self, _ctx):
+        return True
+
+    @override
     def evaluate(self, _ctx):
         return self
 
@@ -66,6 +74,13 @@ class Variable(Expression):
     """Describe a variable (this is *not* the same as an argument)."""
     def __str__(self):
         return self.token.source
+
+    @override
+    def is_atomic(self, ctx):
+        if (symbol := str(self)) in ctx.bound:
+            return ctx.bound[symbol].is_atomic(ctx)
+
+        return True
 
     @override
     def evaluate(self, ctx):
@@ -87,11 +102,21 @@ class Argument(Expression):
         return new if self.token.source == old else self
 
     @override
+    def is_atomic(self, ctx):
+        return True
+
+    @override
     def evaluate(self, _ctx):
         return self
 
 
 class BinaryOperation(Expression):
+    table = {
+        '+': {
+            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value + b.value)
+        }
+    }
+
     def __init__(self, token: Token, lhs: Expression, rhs: Expression):
         super().__init__(token)
         self.lhs = lhs
@@ -118,16 +143,50 @@ class BinaryOperation(Expression):
         )
 
     @override
-    def evaluate(self, ctx):
-        new_lhs = self.lhs if ctx.eval_step else self.lhs.evaluate(ctx)
-        new_rhs = self.rhs if ctx.eval_step else self.rhs.evaluate(ctx)
+    def is_atomic(self, ctx):
+        # if argument(s) can be evaluated, so can we.
+        if not self.lhs.is_atomic(ctx) or not self.rhs.is_atomic(ctx):
+            return False
 
+        # check if operation exists
+        for op, variations in BinaryOperation.table.items():
+            if op == self.op:
+                for (c_lhs, c_rhs), func in variations.items():
+                    if isinstance(self.lhs, c_lhs) and isinstance(self.rhs, c_rhs):
+                        return False
+
+        return True
+
+    @override
+    def evaluate(self, ctx):
+        # evaluate left-hand side
+        if self.lhs.is_atomic(ctx):
+            new_lhs = self.lhs
+        else:
+            new_lhs = self.lhs.evaluate(ctx)
+
+            if ctx.eval_step:
+                return BinaryOperation(self.token, new_lhs, self.rhs)
+
+        # evaluate right-hand side
+        if self.rhs.is_atomic(ctx):
+            new_rhs = self.rhs
+        else:
+            new_rhs = self.rhs.evaluate(ctx)
+
+            if ctx.eval_step:
+                return BinaryOperation(self.token, self.lhs, new_rhs)
+
+        # both evaluating any further?
         if not ctx.eval_ops:
             return BinaryOperation(self.token, new_lhs, new_rhs)
 
-        if self.op == '+':
-            if isinstance(new_lhs, Integer) and isinstance(new_rhs, Integer):
-                return Integer(self.token, new_lhs.value + new_rhs.value)
+        # iterate through operation table
+        for op, variations in BinaryOperation.table.items():
+            if op == self.op:
+                for (c_lhs, c_rhs), func in variations.items():
+                    if isinstance(new_lhs, c_lhs) and isinstance(new_rhs, c_rhs):
+                        return func(new_lhs, self, new_rhs)
 
         if ctx.force_eval:
             raise TypeError(f'{self.token.location()}: unsupported arguments for operator \'{self.op}\': '
@@ -161,6 +220,10 @@ class Function(Expression):
         return self.body.substitute(str(self.argument), value)
 
     @override
+    def is_atomic(self, _ctx):
+        return True
+
+    @override
     def evaluate(self, ctx):
         return self
 
@@ -191,10 +254,34 @@ class Application(Expression):
         )
 
     @override
-    def evaluate(self, ctx):
-        new_target = self.target if ctx.eval_step else self.target.evaluate(ctx)
-        new_value = self.value if ctx.eval_step else self.value.evaluate(ctx)
+    def is_atomic(self, ctx):
+        # if either target or value can be evaluated, so can we
+        if not self.target.is_atomic(ctx) or not self.value.is_atomic(ctx):
+            return False
 
+        return not isinstance(self.target, Function)
+
+    @override
+    def evaluate(self, ctx):
+        # evaluate target
+        if self.target.is_atomic(ctx):
+            new_target = self.target
+        else:
+            new_target = self.target.evaluate(ctx)
+
+            if ctx.eval_step:
+                return Application(self.token, new_target, self.value)
+
+        # evaluate value
+        if self.value.is_atomic(ctx):
+            new_value = self.value
+        else:
+            new_value = self.value.evaluate(ctx)
+
+            if ctx.eval_step:
+                return Application(self.token, self.target, new_value)
+
+        # if function, we substitute
         if isinstance(new_target, Function):
             result = new_target.substitute_argument(new_value)
             return result if ctx.eval_step else result.evaluate(ctx)
