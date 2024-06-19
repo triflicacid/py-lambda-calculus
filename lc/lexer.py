@@ -21,7 +21,7 @@ class Token:
 
     def location(self):
         """Return location as string."""
-        return f'Line {self.line}, col {self.col}'
+        return f'Line {self.line + 1}, col {self.col}'
 
 
 constant_tokens: dict[str, TokenType] = {

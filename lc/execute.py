@@ -3,13 +3,11 @@ from lc.parser import ParseContext, parse
 from lc.structure import EvalContext
 
 
-def execute(source: str, ctx: EvalContext | None = None, *, output_raw=False):
-    if ctx is None:
-        ctx = EvalContext()
-
+def execute(source: str, ctx: EvalContext | None = None, *, parser: ParseContext | None = None, output_raw=False):
     statements = lex(source)
 
-    parser = ParseContext()
+    ctx = EvalContext() if ctx is None else ctx
+    parser = ParseContext() if parser is None else parser
 
     for k, statement in enumerate(statements):
         parser.reset(statement)

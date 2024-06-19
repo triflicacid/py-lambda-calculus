@@ -1,15 +1,22 @@
 from sys import argv
 
 from lc.execute import execute
-
+from lc.structure import EvalContext
 
 if __name__ == "__main__":
     filepath: str | None = None
     output_raw = False
+    ctx = EvalContext()
 
     for arg in argv[1:]:
         if arg == "--output-raw" and not output_raw:
             output_raw = True
+        elif arg == "--no-force-eval" and ctx.force_eval:
+            ctx.force_eval = False
+        elif arg == "--no-eval-ops" and ctx.eval_ops:
+            ctx.eval_ops = False
+        elif arg == "--eval-step" and not ctx.eval_step:
+            ctx.eval_step = True
         elif filepath is None:
             filepath = arg
         else:
@@ -21,5 +28,6 @@ if __name__ == "__main__":
     with open(filepath, 'r') as file:
         execute(
             file.read(),
+            ctx,
             output_raw=output_raw
         )
