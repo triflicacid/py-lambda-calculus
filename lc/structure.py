@@ -10,11 +10,10 @@ class EvalContext:
     def __init__(self):
         self.bound: dict[str, Expression] = {}  # map of bound variables
         self.eval_ops = True  # evaluate binary operations
+        self.eval_step = False  # evaluate one step
 
         # force evaluation; difference between erroring, or returning self on failure
         self.force_eval = True
-
-        self.eval_step = False  # evaluate one step
 
 
 class Expression:
@@ -24,10 +23,6 @@ class Expression:
 
     def substitute(self, old: str, new: Expression) -> Expression:
         """Substitute `old` with the given expression."""
-        return self
-
-    def substitute_argument(self, value: Expression) -> Expression:
-        """Substitute an argument with `value`."""
         return self
 
     def is_atomic(self, ctx: EvalContext):
@@ -135,14 +130,6 @@ class BinaryOperation(Expression):
         )
 
     @override
-    def substitute_argument(self, value):
-        return BinaryOperation(
-            self.token,
-            self.lhs.substitute_argument(value),
-            self.rhs.substitute_argument(value)
-        )
-
-    @override
     def is_atomic(self, ctx):
         # if argument(s) can be evaluated, so can we.
         if not self.lhs.is_atomic(ctx) or not self.rhs.is_atomic(ctx):
@@ -214,10 +201,9 @@ class Function(Expression):
             self.body.substitute(old, new)
         )
 
-    @override
-    def substitute_argument(self, value):
-        # we have encountered an argument
-        return self.body.substitute(str(self.argument), value)
+    def substitute_argument(self, argument: Expression) -> Expression:
+        # provide argument for the function; substitute argument with it.
+        return self.body.substitute(str(self.argument), argument)
 
     @override
     def is_atomic(self, _ctx):
@@ -243,14 +229,6 @@ class Application(Expression):
             self.token,
             self.target.substitute(old, new),
             self.value.substitute(old, new)
-        )
-
-    @override
-    def substitute_argument(self, value):
-        return Application(
-            self.token,
-            self.target.substitute_argument(value),
-            self.value.substitute_argument(value)
         )
 
     @override
