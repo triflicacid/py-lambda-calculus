@@ -1,6 +1,6 @@
-from lc.lexer import Token, TokenType
+from lc.lexer import Token, TokenType, syntax_error
 from lc.structure import Function, Argument, Expression, Variable, Integer, Application, BinaryOperation, EvalContext, \
-    UnaryOperation
+    UnaryOperation, List
 
 
 class ParseContext:
@@ -59,12 +59,6 @@ class ParseContext:
         self.args.pop()
 
 
-def syntax_error(token: Token, expected: str, message: str | None = None):
-    """Generate a SyntaxError from arguments."""
-    return SyntaxError(f'{token.location()}: expected {expected}, got \'{token.source}\'.' +
-                       (' ' + message if message is not None else ''))
-
-
 def parse_function(parser: ParseContext) -> Function:
     """Parse a function definition."""
     parser.expect(TokenType.LAMBDA, raise_error=True, error_expected='\\')
@@ -104,6 +98,29 @@ def parse_group(parser: ParseContext) -> Expression:
     return expr
 
 
+def parse_list(parser: ParseContext) -> Expression:
+    """Parse a list `[expr, expr, ...]`."""
+    parser.expect(TokenType.LSQUARE, raise_error=True, error_expected='[')
+
+    list = List(parser.prev(), [])
+
+    # immediately end?
+    if parser.expect(TokenType.RSQUARE):
+        return list
+
+    # consume expressions
+    while True:
+        list.expressions.append(parse_expression(parser))
+
+        if not parser.expect(TokenType.COMMA):
+            break
+
+    # expect end of list
+    parser.expect(TokenType.RSQUARE, raise_error=True, error_expected='\']\' or \',\'')
+
+    return list
+
+
 def parse_unit(parser: ParseContext, allow_args=False) -> Expression:
     """Parse a single unit: variable, integer, function. Argument dictates if application args are allowed."""
     expr: Expression
@@ -122,12 +139,15 @@ def parse_unit(parser: ParseContext, allow_args=False) -> Expression:
         expr = Integer(parser.prev())
     elif parser.expect(TokenType.LPAREN, advance=False):
         expr = parse_group(parser)
+    elif parser.expect(TokenType.LSQUARE, advance=False):
+        expr = parse_list(parser)
     else:
         raise syntax_error(parser.get(), '\'\\\', variable, \'(\', or integer')
 
     # parse applied arguments
     if allow_args:
-        while parser.expect(TokenType.LAMBDA, TokenType.VARIABLE, TokenType.INT, TokenType.LPAREN, advance=False):
+        while parser.expect(TokenType.LAMBDA, TokenType.VARIABLE, TokenType.INT, TokenType.LPAREN, TokenType.LSQUARE,
+                            advance=False):
             argument = parse_unit(parser)
             expr = expr.apply_argument(argument)
 
@@ -139,7 +159,7 @@ def parse_expression(parser: ParseContext) -> Expression:
     lhs = parse_unit(parser, allow_args=True)
 
     # end of expression?
-    if parser.eof() or parser.expect(TokenType.RPAREN, advance=False):
+    if parser.eof() or parser.expect(TokenType.RPAREN, TokenType.COMMA, TokenType.RSQUARE, advance=False):
         return lhs
 
     parse_binary_operator(parser)

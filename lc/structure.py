@@ -41,7 +41,7 @@ class Expression:
 def bracket_str(e: Expression):
     string = str(e)
 
-    if isinstance(e, (Variable, Argument)) or (isinstance(e, Integer) and e.value >= 0):
+    if isinstance(e, (Variable, Argument, List)) or (isinstance(e, Integer) and e.value >= 0):
         return string
 
     return string if string[0] == '(' else '(' + string + ')'
@@ -68,6 +68,35 @@ class Integer(Expression):
     @override
     def evaluate(self, _ctx):
         return self
+
+
+class List(Expression):
+    """Represents a list of expressions."""
+    def __init__(self, token: Token, expressions: list[Expression]):
+        super().__init__(token)
+        self.expressions = expressions
+
+    def __str__(self):
+        return '[' + ','.join(map(str, self.expressions)) + ']'
+
+    @override
+    def is_atomic(self, ctx):
+        return all(map(lambda e: e.is_atomic(ctx), self.expressions))
+
+    @override
+    def evaluate(self, ctx):
+        evaluated = self.expressions[:]
+
+        for i, expression in enumerate(evaluated):
+            if expression.is_atomic(ctx) and not isinstance(expression, Variable):
+                evaluated[i] = expression
+            else:
+                evaluated[i] = expression.evaluate(ctx)
+
+                if ctx.eval_step:
+                    break
+
+        return List(self.token, evaluated)
 
 
 class Variable(Expression):

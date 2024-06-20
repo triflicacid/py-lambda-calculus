@@ -3,17 +3,20 @@ from enum import Enum
 
 
 class TokenType(Enum):
-    DOT = 1
-    LAMBDA = 2
+    DOT = 0
+    LAMBDA = 1
+    COMMA = 2
     ARROW = 3
     VARIABLE = 4
     INT = 5
     LPAREN = 6
     RPAREN = 7
-    PLUS = 8
-    MINUS = 9
-    STAR = 10
-    SLASH = 11
+    LSQUARE = 8
+    RSQUARE = 9
+    PLUS = 10
+    MINUS = 11
+    STAR = 12
+    SLASH = 13
 
 
 @dataclass
@@ -28,11 +31,20 @@ class Token:
         return f'Line {self.line + 1}, col {self.col}'
 
 
+def syntax_error(token: Token, expected: str, message: str | None = None):
+    """Generate a SyntaxError from arguments."""
+    return SyntaxError(f'{token.location()}: expected {expected}, got \'{token.source}\'.' +
+                       (' ' + message if message is not None else ''))
+
+
 constant_tokens: dict[str, TokenType] = {
     '.': TokenType.DOT,
     '\\': TokenType.LAMBDA,
+    ',': TokenType.COMMA,
     '(': TokenType.LPAREN,
     ')': TokenType.RPAREN,
+    '[': TokenType.LSQUARE,
+    ']': TokenType.RSQUARE,
     '<-': TokenType.ARROW,
     '+': TokenType.PLUS,
     '-': TokenType.MINUS,
@@ -47,7 +59,7 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
     tokens: list[Token] = []
     col = 0
     pos = 0
-    parens = 0
+    parens: list[str] = []  # contain expected CLOSING brackets
     in_comment = False
 
     while pos < len(source):
@@ -65,11 +77,11 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
             pos += 1 if source[pos] == '\n' else 2
 
             # reset paren counter for new statement
-            if parens != 0:
-                raise SyntaxError(
-                    f'Line {line_number}, col {pos}: expected \'(\', got end of input (unbalanced brackets)')
+            if len(parens) != 0:
+                raise SyntaxError(f'Line {line_number}, col {pos}: expected \'{parens.pop()}\', got end of input '
+                                  f'(unbalanced brackets)')
 
-            parens = 0
+            parens = []
 
             continue
 
@@ -110,13 +122,16 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
                 col += len(symbol)
 
                 if token.type == TokenType.LPAREN:
-                    parens += 1
-                elif token.type == TokenType.RPAREN:
-                    if parens == 0:
+                    parens.append(')')
+                elif token.type == TokenType.LSQUARE:
+                    parens.append(']')
+                elif token.type in (TokenType.RPAREN, TokenType.RSQUARE):
+                    if len(parens) == 0:
                         raise SyntaxError(
-                            f'Line {token.line}, col {token.col}: unexpected \')\' (no opening bracket found)')
+                            f'Line {token.line}, col {token.col}: unexpected \'{symbol}\' (no opening bracket found)')
 
-                    parens -= 1
+                    if (need := parens.pop()) != token.source:
+                        raise syntax_error(token, need, '(mismatching brackets)')
 
                 break
 
@@ -147,8 +162,9 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
 
     # if tokens remain, add as new statement
     if len(tokens) > 0 and (len(statements) == 0 or statements[-1] is not tokens):
-        if parens != 0:
-            raise SyntaxError(f'Line {line_number}, col {pos}: expected \'(\', got end of input (unbalanced brackets)')
+        if len(parens) > 0:
+            raise SyntaxError(
+                f'Line {line_number}, col {pos}: expected \'{parens.pop()}\', got end of input (unbalanced brackets)')
 
         statements.append(tokens)
 
