@@ -11,6 +11,9 @@ class TokenType(Enum):
     LPAREN = 6
     RPAREN = 7
     PLUS = 8
+    MINUS = 9
+    STAR = 10
+    SLASH = 11
 
 
 @dataclass
@@ -32,6 +35,9 @@ constant_tokens: dict[str, TokenType] = {
     ')': TokenType.RPAREN,
     '<-': TokenType.ARROW,
     '+': TokenType.PLUS,
+    '-': TokenType.MINUS,
+    '*': TokenType.STAR,
+    '/': TokenType.SLASH,
 }
 
 

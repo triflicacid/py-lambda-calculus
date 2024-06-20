@@ -110,7 +110,16 @@ class BinaryOperation(Expression):
     table = {
         '+': {
             (Integer, Integer): lambda a, op, b: Integer(op.token, a.value + b.value)
-        }
+        },
+        '-': {
+            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value - b.value)
+        },
+        '*': {
+            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value * b.value)
+        },
+        '/': {
+            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value // b.value)
+        },
     }
 
     def __init__(self, token: Token, lhs: Expression, rhs: Expression):

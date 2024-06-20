@@ -87,7 +87,8 @@ def parse_function(parser: ParseContext) -> Function:
 
 def parse_operator(parser: ParseContext) -> str:
     """Parse an operator symbol."""
-    parser.expect(TokenType.PLUS, raise_error=True, error_expected='\'+\' (operator)')
+    parser.expect(TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH,
+                  raise_error=True, error_expected='\'+\', \'-\', \'*\', \'/\' (operator)')
     return parser.prev().source
 
 

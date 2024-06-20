@@ -24,6 +24,9 @@ Atoms are the simplest of expressions and cannot be decomposed further.
 Certain operators are also defined, as below.
 
 - `+` defines integer addition.
+- `-` defines integer subtraction.
+- `*` define integer multiplication.
+- `/` defines integer division (`floor(a / b)`).
 
 Functions are the fundamental building-blocks of lambda calculus.
 They take **one** argument and, on evaluation, substitutes this argument with the applied value.
