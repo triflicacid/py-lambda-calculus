@@ -5,8 +5,10 @@ from lc.structure import EvalContext
 
 def remove_outer_brackets(s: str):
     """Remove any outer-level brackets."""
-    while s[0] == '(' and s[-1] == ')':
-        s = s[1:-1]
+    # should only have one level, due to how .__str__ works on Expressions.
+    # might be nice to strip and n>0 pairs of outer brackets, but must check they match first.
+    if s[0] == '(' and s[-1] == ')':
+        return s[1:-1]
 
     return s
 
