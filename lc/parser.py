@@ -82,8 +82,8 @@ def parse_function(parser: ParseContext) -> Function:
 
 def parse_binary_operator(parser: ParseContext) -> str:
     """Parse a binary operator symbol."""
-    parser.expect(TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH,
-                  raise_error=True, error_expected='\'+\', \'-\', \'*\', \'/\' (operator)')
+    parser.expect(TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH, TokenType.COLON,
+                  raise_error=True, error_expected='\'+\', \'-\', \'*\', \'/\', \':\' (operator)')
     return parser.prev().source
 
 

@@ -21,6 +21,8 @@ Atoms are the simplest of expressions and cannot be decomposed further.
 
 - *Integers* are a sequence of digits, which may be preceded by a negative sign.
 
+Lists are data structures of multiple expressions, defines by square brackets and a comma-separated list of expressions.
+
 Certain operators are also defined.
 Unary:
 
@@ -28,10 +30,19 @@ Unary:
 
 And binary:
 
-- `+` defines integer addition.
-- `-` defines integer subtraction.
-- `*` define integer multiplication.
-- `/` defines integer division (`floor(a / b)`).
+- Liftable:
+  - `+` defines integer addition on `int, int`, and list concatenation on `list, list`.
+  - `-` defines integer subtraction on `int, int`, and set subtraction on `list, list`.
+  - `*` define integer multiplication.
+  - `/` defines integer division (`floor(a / b)`).
+- Not liftable:
+  - `:` defines head insertion on a list on `*, list`.
+
+For applicable operators: if either, but not both, operands are a list, the binary operator is "lifted" inside the list.
+For example,
+```
+[1, 2, 3] * 2 --> [1*2, 2*2, 3*3]
+```
 
 Functions are the fundamental building-blocks of lambda calculus.
 They take **one** argument and, on evaluation, substitutes this argument with the applied value.
@@ -71,6 +82,3 @@ Names may be bound with the following syntax:
 ```
 During execution, any free-variable instances of `<var>` are evaluated to `<expr>`.
 A name may only be assigned once.
-
-Lists are data structures of multiple expressions, defines by square brackets and a comma-separated list of expressions.
-

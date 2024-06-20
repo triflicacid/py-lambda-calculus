@@ -17,6 +17,7 @@ class TokenType(Enum):
     MINUS = 11
     STAR = 12
     SLASH = 13
+    COLON = 14
 
 
 @dataclass
@@ -50,6 +51,7 @@ constant_tokens: dict[str, TokenType] = {
     '-': TokenType.MINUS,
     '*': TokenType.STAR,
     '/': TokenType.SLASH,
+    ':': TokenType.COLON,
 }
 
 

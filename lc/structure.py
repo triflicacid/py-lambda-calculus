@@ -79,6 +79,13 @@ class List(Expression):
     def __str__(self):
         return '[' + ','.join(map(str, self.expressions)) + ']'
 
+    def add_expression(self, expr: Expression):
+        self.expressions.insert(0, expr)
+        return self
+
+    def contains(self, expr: Expression):
+        return any(map(lambda e: str(e) == str(expr), self.expressions))
+
     @override
     def is_atomic(self, ctx):
         return all(map(lambda e: e.is_atomic(ctx), self.expressions))
@@ -97,6 +104,14 @@ class List(Expression):
                     break
 
         return List(self.token, evaluated)
+
+    @staticmethod
+    def union(a: List, b: List, token: Token):
+        return List(token, [*a.expressions, *b.expressions])
+
+    @staticmethod
+    def difference(a: List, b: List, token: Token):
+        return List(token, [x for x in a.expressions if not b.contains(x)])
 
 
 class Variable(Expression):
@@ -208,10 +223,12 @@ class UnaryOperation(Expression):
 class BinaryOperation(Expression):
     table = {
         '+': {
-            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value + b.value)
+            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value + b.value),
+            (List, List): lambda a, op, b: List.union(a, b, op.token)
         },
         '-': {
-            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value - b.value)
+            (Integer, Integer): lambda a, op, b: Integer(op.token, a.value - b.value),
+            (List, List): lambda a, op, b: List.difference(a, b, op.token)
         },
         '*': {
             (Integer, Integer): lambda a, op, b: Integer(op.token, a.value * b.value)
@@ -219,7 +236,12 @@ class BinaryOperation(Expression):
         '/': {
             (Integer, Integer): lambda a, op, b: Integer(op.token, a.value // b.value)
         },
+        ':': {
+            (Expression, List): lambda a, op, b: b.add_expression(a)
+        }
     }
+
+    list_liftable = ('+', '-', '/', '*')
 
     def __init__(self, token: Token, lhs: Expression, rhs: Expression):
         super().__init__(token)
@@ -242,6 +264,10 @@ class BinaryOperation(Expression):
     def is_atomic(self, ctx):
         # if argument(s) can be evaluated, so can we.
         if not self.lhs.is_atomic(ctx) or not self.rhs.is_atomic(ctx):
+            return False
+
+        # one side is a list
+        if int(isinstance(self.lhs, List)) + int(isinstance(self.rhs, List)) == 1:
             return False
 
         # check if operation exists
@@ -277,18 +303,49 @@ class BinaryOperation(Expression):
         if not ctx.eval_ops:
             return BinaryOperation(self.token, new_lhs, new_rhs)
 
-        # iterate through operation table
-        for op, variations in BinaryOperation.table.items():
-            if op == self.op:
-                for (c_lhs, c_rhs), func in variations.items():
-                    if isinstance(new_lhs, c_lhs) and isinstance(new_rhs, c_rhs):
-                        return func(new_lhs, self, new_rhs)
+        # if one is a list, but the other is not...
+        if self.op in BinaryOperation.list_liftable:
+            expressions: list[Expression] | None = None
+
+            if isinstance(new_lhs, List) and not isinstance(new_rhs, List):
+                expressions = new_lhs.expressions
+                new_lhs = None
+            elif not isinstance(new_lhs, List) and isinstance(new_rhs, List):
+                expressions = new_rhs.expressions
+                new_rhs = None
+
+            if expressions is not None:
+                result: list[Expression] = []
+
+                for expr in expressions:
+                    lhs = expr if new_lhs is None else new_lhs
+                    rhs = expr if new_rhs is None else new_rhs
+
+                    result.append(BinaryOperation(self.token, lhs, rhs))
+
+                return List(self.token, result)
+
+        # lookup function
+        func = BinaryOperation.lookup(new_lhs, self.op, new_rhs)
+
+        if func is not None:
+            return func(new_lhs, self, new_rhs)
 
         if ctx.force_eval:
             raise TypeError(f'{self.token.location()}: unsupported arguments for operator \'{self.op}\': '
                             f'{new_lhs} {self.op} {new_rhs}')
 
         return BinaryOperation(self.token, new_lhs, new_rhs)
+
+    @staticmethod
+    def lookup(lhs: Expression, operator: str, rhs: Expression):
+        for op, variations in BinaryOperation.table.items():
+            if operator == op:
+                for (c_lhs, c_rhs), value in variations.items():
+                    if isinstance(lhs, c_lhs) and isinstance(rhs, c_rhs):
+                        return value
+
+        return None
 
 
 class Function(Expression):
