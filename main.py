@@ -6,7 +6,6 @@ if __name__ == "__main__":
 
     ctx = EvalContext()
     ctx.eval_step = True
-    ctx.force_eval = False
 
     with open(filepath, 'r') as file:
-        execute(file.read(), ctx)
+        execute(file.read(), ctx, output_raw=True)

@@ -56,3 +56,10 @@ The output depends on the value of `x`.
 When parsed, the file is scanned from start to end, everything assumed to be part of one large expression.
 Semicolons may be used to start a new statement.
 Comments, starting with `#`, may be included, and cause the rest of the line to be skipped.
+
+Names may be bound with the following syntax:
+```
+<var> <- <expr>
+```
+During execution, any free-variable instances of `<var>` are evaluated to `<expr>`.
+A name may only be assigned once.

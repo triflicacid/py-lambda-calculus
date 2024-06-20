@@ -72,15 +72,16 @@ class Variable(Expression):
 
     @override
     def is_atomic(self, ctx):
-        if (symbol := str(self)) in ctx.bound:
-            return ctx.bound[symbol].is_atomic(ctx)
+        if str(self) in ctx.bound:
+            return False  # 'False' as we can expand
 
         return True
 
     @override
     def evaluate(self, ctx):
         if (symbol := str(self)) in ctx.bound:
-            return ctx.bound[symbol]
+            value = ctx.bound[symbol]
+            return value if ctx.eval_step else value.evaluate(ctx)
 
         if ctx.force_eval:
             raise NameError(f'{self.token.location()}: cannot evaluate unbound variable \'{symbol}\'')

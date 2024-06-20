@@ -9,12 +9,12 @@ def execute(source: str, ctx: EvalContext | None = None, *, parser: ParseContext
     ctx = EvalContext() if ctx is None else ctx
     parser = ParseContext() if parser is None else parser
 
-    for k, statement in enumerate(statements):
-        parser.reset(statement)
-        expression = parse(parser)
+    expressions = list(filter(lambda e: e is not None,
+                              (parse(parser.reset(statement), ctx) for statement in statements)))
 
-        if len(statements) > 1:
-            print(f'*** Statement #{k + 1}')
+    for k, expression in enumerate(expressions):
+        if len(expressions) > 1:
+            print(f'*** Statement #{k}')
 
         if output_raw or ctx.eval_step:
             print(str(expression))

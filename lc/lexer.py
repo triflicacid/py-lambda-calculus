@@ -5,11 +5,12 @@ from enum import Enum
 class TokenType(Enum):
     DOT = 1
     LAMBDA = 2
-    VARIABLE = 3
-    INT = 4
-    LPAREN = 5
-    RPAREN = 6
-    PLUS = 7
+    ARROW = 3
+    VARIABLE = 4
+    INT = 5
+    LPAREN = 6
+    RPAREN = 7
+    PLUS = 8
 
 
 @dataclass
@@ -29,6 +30,7 @@ constant_tokens: dict[str, TokenType] = {
     '\\': TokenType.LAMBDA,
     '(': TokenType.LPAREN,
     ')': TokenType.RPAREN,
+    '<-': TokenType.ARROW,
     '+': TokenType.PLUS,
 }
 

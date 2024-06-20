@@ -1,5 +1,5 @@
 from lc.lexer import Token, TokenType
-from lc.structure import Function, Argument, Expression, Variable, Integer, Application, BinaryOperation
+from lc.structure import Function, Argument, Expression, Variable, Integer, Application, BinaryOperation, EvalContext
 
 
 class ParseContext:
@@ -10,11 +10,13 @@ class ParseContext:
         self.args: list[str] = []  # record symbols used as function arguments
 
     def reset(self, tokens: list[Token] | None = None):
-        """Reset object, updating token list if necessary."""
+        """Reset object, updating token list if necessary, and return self."""
         self.pos = 0
 
         if tokens is not None:
             self.tokens = tokens
+
+        return self
 
     def get(self, offset: int = 0):
         """Get the token at `self.pos`, otherwise return None."""
@@ -25,20 +27,24 @@ class ParseContext:
         """Equivalent to `self.get(-1)`, but assumes this location exists."""
         return self.tokens[self.pos - 1]
 
+    def move(self, offset: int):
+        """Move `self.pos` by `offset`."""
+        self.pos += offset
+
     def eof(self):
         """Return if no more tokens left to consume."""
         return self.pos >= len(self.tokens)
 
-    def expect(self, *types: TokenType, advance=True, raise_error=False, error_expected: str | None = None):
+    def expect(self, *types: TokenType, offset=0, advance=True, raise_error=False, error_expected: str | None = None):
         """Return True and advance `self.pos` if `self.get()`'s type is in `types`, otherwise return False."""
-        if (token := self.get()) is not None and token.type in types:
+        if (token := self.get(offset)) is not None and token.type in types:
             if advance:
                 self.pos += 1
 
             return True
 
         if raise_error:
-            raise SyntaxError(f'{token}: expected {error_expected}, got \'{token.source}\'')
+            raise SyntaxError(f'{token.location()}: expected {error_expected}, got \'{token.source}\'')
 
         return False
 
@@ -81,7 +87,7 @@ def parse_function(parser: ParseContext) -> Function:
 
 def parse_operator(parser: ParseContext) -> str:
     """Parse an operator symbol."""
-    parser.expect(TokenType.PLUS, raise_error=True, error_expected='+')
+    parser.expect(TokenType.PLUS, raise_error=True, error_expected='\'+\' (operator)')
     return parser.prev().source
 
 
@@ -136,13 +142,33 @@ def parse_expression(parser: ParseContext) -> Expression:
     return BinaryOperation(op, lhs, rhs)
 
 
-def parse(parser: ParseContext) -> Expression:
+def parse(parser: ParseContext, ctx: EvalContext) -> Expression | None:
     """Parse token list of one statement into an expression."""
     parser.reset()
 
+    # check for assignment
+    symbol: Token | None = None
+
+    if parser.expect(TokenType.VARIABLE, advance=False) and parser.expect(TokenType.ARROW, offset=1, advance=False):
+        symbol = parser.get()
+        parser.move(2)
+
+    # parse expression
     expr = parse_expression(parser)
 
+    # this should be all...
     if not parser.eof():
         raise syntax_error(parser.get(), 'end of statement')
 
-    return expr
+    # if a plain expression (no assignment), return
+    if symbol is None:
+        return expr
+
+    # forbid overwriting values
+    if symbol.source in ctx.bound:
+        raise NameError(f'{symbol.location()}: attempted assignment to bound name \'{symbol.source}\'')
+
+    # bind value to symbol
+    ctx.bound[symbol.source] = expr
+
+    return None
