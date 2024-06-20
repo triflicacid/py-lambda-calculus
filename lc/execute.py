@@ -3,6 +3,14 @@ from lc.parser import ParseContext, parse
 from lc.structure import EvalContext
 
 
+def remove_outer_brackets(s: str):
+    """Remove any outer-level brackets."""
+    while s[0] == '(' and s[-1] == ')':
+        s = s[1:-1]
+
+    return s
+
+
 def execute(source: str, ctx: EvalContext | None = None, *, parser: ParseContext | None = None, output_raw=False):
     statements = lex(source)
 
@@ -20,7 +28,7 @@ def execute(source: str, ctx: EvalContext | None = None, *, parser: ParseContext
             print(str(expression))
             print('-> ', end='')
 
-        print(str(expression := expression.evaluate(ctx)))
+        print(remove_outer_brackets(str(expression := expression.evaluate(ctx))))
 
         while not expression.is_atomic(ctx):
-            print('-> ' + str(expression := expression.evaluate(ctx)))
+            print('-> ' + remove_outer_brackets(str(expression := expression.evaluate(ctx))))
