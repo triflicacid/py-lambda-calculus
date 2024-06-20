@@ -56,6 +56,11 @@ class Integer(Expression):
     def __str__(self):
         return str(self.value)
 
+    def negate(self):
+        """Negate `self.value`, return reference to self."""
+        self.value *= -1
+        return self
+
     @override
     def is_atomic(self, _ctx):
         return True

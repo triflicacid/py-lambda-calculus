@@ -19,7 +19,7 @@ The following options are available:
 
 Atoms are the simplest of expressions and cannot be decomposed further.
 
-- *Integers* are a sequence of digits.
+- *Integers* are a sequence of digits, which may be preceded by a negative sign.
 
 Certain operators are also defined, as below.
 

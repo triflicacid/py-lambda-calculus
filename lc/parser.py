@@ -111,6 +111,10 @@ def parse_unit(parser: ParseContext, allow_args=False) -> Expression:
         expr = parse_function(parser)
     elif parser.expect(TokenType.VARIABLE):
         expr = Argument(token) if (token := parser.prev()).source in parser.args else Variable(token)
+    elif parser.expect(TokenType.MINUS):
+        # TODO unary minus operation?
+        parser.expect(TokenType.INT, raise_error=True, error_expected='integer')
+        expr = Integer(parser.prev()).negate()
     elif parser.expect(TokenType.INT):
         expr = Integer(parser.prev())
     elif parser.expect(TokenType.LPAREN, advance=False):
