@@ -1,5 +1,6 @@
 from lc.lexer import Token, TokenType
-from lc.structure import Function, Argument, Expression, Variable, Integer, Application, BinaryOperation, EvalContext
+from lc.structure import Function, Argument, Expression, Variable, Integer, Application, BinaryOperation, EvalContext, \
+    UnaryOperation
 
 
 class ParseContext:
@@ -85,8 +86,8 @@ def parse_function(parser: ParseContext) -> Function:
     return Function(function_token, argument, body)
 
 
-def parse_operator(parser: ParseContext) -> str:
-    """Parse an operator symbol."""
+def parse_binary_operator(parser: ParseContext) -> str:
+    """Parse a binary operator symbol."""
     parser.expect(TokenType.PLUS, TokenType.MINUS, TokenType.STAR, TokenType.SLASH,
                   raise_error=True, error_expected='\'+\', \'-\', \'*\', \'/\' (operator)')
     return parser.prev().source
@@ -112,9 +113,11 @@ def parse_unit(parser: ParseContext, allow_args=False) -> Expression:
     elif parser.expect(TokenType.VARIABLE):
         expr = Argument(token) if (token := parser.prev()).source in parser.args else Variable(token)
     elif parser.expect(TokenType.MINUS):
-        # TODO unary minus operation?
-        parser.expect(TokenType.INT, raise_error=True, error_expected='integer')
-        expr = Integer(parser.prev()).negate()
+        if parser.expect(TokenType.INT):
+            expr = Integer(parser.prev()).negate()
+        else:
+            op = parser.prev()
+            expr = UnaryOperation(op, parse_unit(parser, allow_args=True))
     elif parser.expect(TokenType.INT):
         expr = Integer(parser.prev())
     elif parser.expect(TokenType.LPAREN, advance=False):
@@ -139,7 +142,7 @@ def parse_expression(parser: ParseContext) -> Expression:
     if parser.eof() or parser.expect(TokenType.RPAREN, advance=False):
         return lhs
 
-    parse_operator(parser)
+    parse_binary_operator(parser)
     op = parser.prev()
 
     rhs = parse_expression(parser)

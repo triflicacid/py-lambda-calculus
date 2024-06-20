@@ -118,6 +118,8 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
 
                     parens -= 1
 
+                break
+
         # scan for a variable
         if token is None and source[pos].islower():
             token = Token('', TokenType.VARIABLE, line_number, col)

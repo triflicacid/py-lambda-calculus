@@ -41,7 +41,7 @@ class Expression:
 def bracket_str(e: Expression):
     string = str(e)
 
-    if isinstance(e, (Integer, Variable, Argument)):
+    if isinstance(e, (Variable, Argument)) or (isinstance(e, Integer) and e.value >= 0):
         return string
 
     return string if string[0] == '(' else '(' + string + ')'
@@ -89,7 +89,7 @@ class Variable(Expression):
             return value if ctx.eval_step else value.evaluate(ctx)
 
         if ctx.force_eval:
-            raise NameError(f'{self.token.location()}: cannot evaluate unbound variable \'{symbol}\'')
+            raise NameError(f'{self.token.location()}: free variable \'{symbol}\' encountered')
 
         return self
 
@@ -109,6 +109,71 @@ class Argument(Expression):
     @override
     def evaluate(self, _ctx):
         return self
+
+
+class UnaryOperation(Expression):
+    table = {
+        '-': {
+            Integer: lambda op, arg: Integer(op.token, -1 * arg.value)
+        },
+    }
+
+    def __init__(self, token: Token, argument: Expression):
+        super().__init__(token)
+        self.op = token.source
+        self.argument = argument
+
+    def __str__(self):
+        return f'{self.op}{bracket_str(self.argument)}'
+
+    @override
+    def substitute(self, old, new):
+        return UnaryOperation(
+            self.token,
+            self.argument.substitute(old, new)
+        )
+
+    @override
+    def is_atomic(self, ctx):
+        # if argument can be evaluated, so can we.
+        if not self.argument.is_atomic(ctx):
+            return False
+
+        # check if operation exists
+        for op, variations in UnaryOperation.table.items():
+            if op == self.op:
+                for c, func in variations.items():
+                    if isinstance(self.argument, c):
+                        return False
+
+        return True
+
+    @override
+    def evaluate(self, ctx):
+        # evaluate argument
+        if self.argument.is_atomic(ctx) and not isinstance(self.argument, Variable):
+            new_arg = self.argument
+        else:
+            new_arg = self.argument.evaluate(ctx)
+
+            if ctx.eval_step:
+                return UnaryOperation(self.token, new_arg)
+
+        # both evaluating any further?
+        if not ctx.eval_ops:
+            return UnaryOperation(self.token, new_arg)
+
+        # iterate through operation table
+        for op, variations in UnaryOperation.table.items():
+            if op == self.op:
+                for c, func in variations.items():
+                    if isinstance(new_arg, c):
+                        return func(self, new_arg)
+
+        if ctx.force_eval:
+            raise TypeError(f'{self.token.location()}: unsupported argument for operator \'{self.op}\': {new_arg}')
+
+        return UnaryOperation(self.token, new_arg)
 
 
 class BinaryOperation(Expression):
@@ -162,7 +227,7 @@ class BinaryOperation(Expression):
     @override
     def evaluate(self, ctx):
         # evaluate left-hand side
-        if self.lhs.is_atomic(ctx):
+        if self.lhs.is_atomic(ctx) and not isinstance(self.lhs, Variable):
             new_lhs = self.lhs
         else:
             new_lhs = self.lhs.evaluate(ctx)
@@ -171,7 +236,7 @@ class BinaryOperation(Expression):
                 return BinaryOperation(self.token, new_lhs, self.rhs)
 
         # evaluate right-hand side
-        if self.rhs.is_atomic(ctx):
+        if self.rhs.is_atomic(ctx) and not isinstance(self.rhs, Variable):
             new_rhs = self.rhs
         else:
             new_rhs = self.rhs.evaluate(ctx)
