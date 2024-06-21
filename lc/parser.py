@@ -9,6 +9,7 @@ class ParseContext:
         self.tokens = [] if tokens is None else tokens
         self.pos = 0
         self.args: list[str] = []  # record symbols used as function arguments
+        self.multi_args = False  # allow multiple arguments in lambdas?
 
     def reset(self, tokens: list[Token] | None = None):
         """Reset object, updating token list if necessary, and return self."""
@@ -64,6 +65,34 @@ def parse_function(parser: ParseContext) -> Function:
     parser.expect(TokenType.LAMBDA, raise_error=True, error_expected='\\')
 
     function_token = parser.prev()
+
+    # allow function definitions with multiple parameters?
+    if parser.multi_args:
+        # parse function arguments
+        arguments: list[Argument] = []
+
+        parser.expect(TokenType.VARIABLE, raise_error=True, error_expected='argument')
+        arguments.append(Argument(parser.prev()))
+        parser.push_arg(arguments[-1])
+
+        while parser.expect(TokenType.VARIABLE):
+            arguments.append(Argument(parser.prev()))
+            parser.push_arg(arguments[-1])
+
+        parser.expect(TokenType.DOT, raise_error=True, error_expected='\'.\'')
+
+        # parse function body
+        body = parse_expression(parser)
+
+        for _ in range(len(arguments)):
+            parser.pop_arg()
+
+        func = Function(function_token, arguments.pop(), body)
+
+        while len(arguments) > 0:
+            func = Function(function_token, arguments.pop(), func)
+
+        return func
 
     # function argument
     parser.expect(TokenType.VARIABLE, raise_error=True, error_expected='argument')

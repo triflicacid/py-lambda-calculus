@@ -14,6 +14,10 @@ The following options are available:
 - `--no-force-eval` - do not force evaluation (still evaluates where possible).
 - `--no-eval-ops` - skip evaluation of operators.
 - `--eval-step` - evaluate in steps, rather than in one go. If present, the raw statement will be output as well.
+- `--allow-multi-args` - allow multiple arguments in lambda definitions. If enabled, then
+```
+(\x y. y) === (\x. \y. y)
+```
 
 # Syntax
 
