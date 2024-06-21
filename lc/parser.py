@@ -144,7 +144,7 @@ def parse_unit(parser: ParseContext, allow_args=False) -> Expression:
     elif parser.expect(TokenType.LSQUARE, advance=False):
         expr = parse_list(parser)
     else:
-        raise syntax_error(parser.get(), '\'\\\', variable, \'(\', or integer')
+        raise syntax_error(parser.get(), '\'\\\', variable, \'(\', \'[\', constant, or integer')
 
     # parse applied arguments
     if allow_args:
