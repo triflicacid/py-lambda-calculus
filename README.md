@@ -20,6 +20,7 @@ The following options are available:
 Atoms are the simplest of expressions and cannot be decomposed further.
 
 - *Integers* are a sequence of digits, which may be preceded by a negative sign.
+- *Constants* are uppercase symbols, e.g., `A`.
 
 Lists are data structures of multiple expressions, defines by square brackets and a comma-separated list of expressions.
 
@@ -31,7 +32,7 @@ Unary:
 And binary:
 
 - Liftable:
-  - `+` defines integer addition on `int, int`, and list concatenation on `list, list`.
+  - `+` defines integer addition on `int, int`, list concatenation on `list, list`, constant concatenation on `const, const`.
   - `-` defines integer subtraction on `int, int`, and set subtraction on `list, list`.
   - `*` define integer multiplication.
   - `/` defines integer division (`floor(a / b)`).

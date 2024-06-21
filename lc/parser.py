@@ -1,6 +1,6 @@
 from lc.lexer import Token, TokenType, syntax_error
 from lc.structure import Function, Argument, Expression, Variable, Integer, Application, BinaryOperation, EvalContext, \
-    UnaryOperation, List
+    UnaryOperation, List, Constant
 
 
 class ParseContext:
@@ -129,6 +129,8 @@ def parse_unit(parser: ParseContext, allow_args=False) -> Expression:
         expr = parse_function(parser)
     elif parser.expect(TokenType.VARIABLE):
         expr = Argument(token) if (token := parser.prev()).source in parser.args else Variable(token)
+    elif parser.expect(TokenType.CONSTANT):
+        expr = Constant(parser.prev())
     elif parser.expect(TokenType.MINUS):
         if parser.expect(TokenType.INT):
             expr = Integer(parser.prev()).negate()
@@ -147,7 +149,7 @@ def parse_unit(parser: ParseContext, allow_args=False) -> Expression:
     # parse applied arguments
     if allow_args:
         while parser.expect(TokenType.LAMBDA, TokenType.VARIABLE, TokenType.INT, TokenType.LPAREN, TokenType.LSQUARE,
-                            advance=False):
+                            TokenType.CONSTANT, advance=False):
             argument = parse_unit(parser)
             expr = expr.apply_argument(argument)
 

@@ -18,6 +18,7 @@ class TokenType(Enum):
     STAR = 12
     SLASH = 13
     COLON = 14
+    CONSTANT = 15
 
 
 @dataclass
@@ -142,6 +143,15 @@ def lex(source: str, line_number: int = 0) -> list[list[Token]]:
             token = Token('', TokenType.VARIABLE, line_number, col)
 
             while pos < len(source) and source[pos].islower():
+                token.source += source[pos]
+                pos += 1
+                col += 1
+
+        # scan for a constant
+        if token is None and source[pos].isupper():
+            token = Token('', TokenType.CONSTANT, line_number, col)
+
+            while pos < len(source) and source[pos].isupper():
                 token.source += source[pos]
                 pos += 1
                 col += 1

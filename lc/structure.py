@@ -41,7 +41,7 @@ class Expression:
 def bracket_str(e: Expression):
     string = str(e)
 
-    if isinstance(e, (Variable, Argument, List)) or (isinstance(e, Integer) and e.value >= 0):
+    if isinstance(e, (Variable, Argument, List, Constant)) or (isinstance(e, Integer) and e.value >= 0):
         return string
 
     return string if string[0] == '(' else '(' + string + ')'
@@ -155,6 +155,24 @@ class Argument(Expression):
         return self
 
 
+class Constant(Expression):
+    """Describe a constant symbol."""
+    def __init__(self, token: Token, symbol: str | None = None):
+        super().__init__(token)
+        self.symbol = token.source if symbol is None else symbol
+
+    def __str__(self):
+        return self.symbol
+
+    @override
+    def is_atomic(self, ctx):
+        return True
+
+    @override
+    def evaluate(self, ctx):
+        return self
+
+
 class UnaryOperation(Expression):
     table = {
         '-': {
@@ -179,6 +197,10 @@ class UnaryOperation(Expression):
 
     @override
     def is_atomic(self, ctx):
+        # if forcing eval, then no
+        if ctx.force_eval:
+            return False
+
         # if argument can be evaluated, so can we.
         if not self.argument.is_atomic(ctx):
             return False
@@ -224,6 +246,7 @@ class BinaryOperation(Expression):
     table = {
         '+': {
             (Integer, Integer): lambda a, op, b: Integer(op.token, a.value + b.value),
+            (Constant, Constant): lambda a, op, b: Constant(op.token, str(a) + str(b)),
             (List, List): lambda a, op, b: List.union(a, b, op.token)
         },
         '-': {
@@ -262,6 +285,10 @@ class BinaryOperation(Expression):
 
     @override
     def is_atomic(self, ctx):
+        # if forcing eval, then no
+        if ctx.force_eval:
+            return False
+
         # if argument(s) can be evaluated, so can we.
         if not self.lhs.is_atomic(ctx) or not self.rhs.is_atomic(ctx):
             return False
